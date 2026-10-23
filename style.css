@@ -1,0 +1,22 @@
+:root{--bg:#101827;--card:#1b2538;--fg:#fff;--mut:#cbd5e1;--teal:#0d9488;--amb:#f59e0b;--red:#ef4444}
+*{box-sizing:border-box}
+body{margin:auto;max-width:520px;padding:0 14px 96px;background:var(--bg);color:var(--fg);font:20px/1.45 Inter,system-ui,sans-serif}
+h1{font-size:28px;margin:12px 0 8px}h2{font-size:26px;margin:10px 0}h3{margin:0 0 8px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0}.c{text-align:center}
+button,input,.btn{display:block;width:100%;min-height:60px;margin:6px 0;padding:0 16px;border:0;border-radius:12px;font:inherit;text-align:center;text-decoration:none}
+button,.btn{background:var(--teal);color:#fff;font-weight:600;line-height:1.2;padding:10px 16px}button.alt{background:#334155}
+input{background:#fff;color:#111}
+.row,.grid{display:flex;gap:8px}.row button{flex:1}.grid{flex-wrap:wrap}.grid button{flex:1 1 45%}
+small{color:var(--mut);font-size:16px;display:block;margin-top:6px}code{word-break:break-all;color:#5eead4}
+#pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:15px;padding:4px 10px;border-radius:99px;background:#334155}
+.pill.ok{background:#115e59}.pill.warn{background:#92400e}.pill.bad{background:#991b1b}
+.alert{background:#7c2d12;border-left:8px solid var(--amb);border-radius:10px;padding:10px 14px;margin:8px 0}
+.view{display:none}.view.on{display:block}
+#arrow{font-size:120px;line-height:1}.big{font-size:28px;font-weight:700}#map{height:280px;border-radius:12px;margin:8px 0}
+ul{padding-left:20px}li.ok::marker{color:#5eead4}li.bad::marker{color:var(--red)}li.warn::marker{color:var(--amb)}
+.tl{display:flex;gap:3px;height:16px;align-items:center;margin:6px 0}.tl i{display:block;height:100%;background:var(--teal);border-radius:3px}.tl b{display:block}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0b1220;padding:6px;gap:4px}
+nav button{margin:0;min-height:56px;font-size:16px;background:#1e293b}nav button[aria-current=true]{background:var(--teal)}
+:focus-visible{outline:3px solid var(--amb);outline-offset:2px}
+.sr{position:absolute;left:-9999px}
