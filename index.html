@@ -5,59 +5,52 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="style.css">
 </head><body>
-<header><h1>CrossSense</h1><div id="pills" aria-label="System status"></div></header>
+<div id="start" role="button" tabindex="0" aria-label="CrossSense. Double tap anywhere to start voice control.">
+ <h1>CrossSense</h1><p>Tap anywhere to start voice control</p><small>One tap is needed so the browser allows sound and the microphone.</small></div>
+<header><h1>CrossSense</h1><div id="pills" aria-label="System status"></div><div class="pill" id="micstat">Mic: off</div><div id="heard" aria-hidden="true"></div></header>
 <div id="alerts"></div><div id="live" class="sr" aria-live="polite"></div>
 <main>
 <section class="view on" id="v-home"><h2>Where would you like to go?</h2>
- <div class="card"><button id="hubbtn" onclick="connectHub()">Connect to CrossSense hub</button>
- <button class="alt" onclick="say('Hello, welcome to CrossSense. Where would you like to go?')">Hear greeting</button>
- <input id="dest" aria-label="Destination" placeholder="Type a destination">
- <div class="row"><button id="mic" class="alt" aria-label="Speak destination">Speak</button><button id="conf">Confirm</button></div>
- <small id="micnote"></small><p id="hstat" aria-live="polite"></p></div></section>
+ <div class="card"><input id="dest" aria-label="Destination" placeholder="Say: go to (place)"><p id="hstat" aria-live="polite"></p></div></section>
 
 <section class="view" id="v-check"><h2>Device check</h2>
- <div class="card"><button onclick="runCheck()">Start check</button><div id="ask"></div><ul id="diag"></ul>
- <button id="goOn" hidden onclick="show('haptics')">Continue to haptic practice</button>
+ <div class="card"><div id="ask"></div><ul id="diag"></ul>
+ <p id="goOn" hidden>Check passed. Say continue.</p>
  <small>A sent command is not proof of vibration. Only your answer counts as confirmation.</small></div></section>
 
 <section class="view" id="v-haptics"><h2>Haptic language</h2>
  <div id="pats"></div>
- <div class="card"><h3>Practice</h3><button onclick="practice()">Play a random cue</button><div id="prac"></div></div>
  <small>These patterns are proposals and must be validated with users before real-world use.</small></section>
 
 <section class="view" id="v-route"><h2>Route preview</h2>
- <div class="card"><p id="rsum"></p><div id="map"></div><small>Walking route from OpenRouteService and OpenStreetMap data. Estimates only.</small>
- <button onclick="startNav()">Start journey</button>
- <div class="row"><button class="alt" onclick="show('home')">Change destination</button><button class="alt" onclick="show('home')">Cancel</button></div></div></section>
+ <div class="card"><p id="rsum"></p><div id="map"></div><small>Walking route from OpenRouteService and OpenStreetMap data. Estimates only.</small></div></section>
 
 <section class="view" id="v-nav"><h2>Navigating</h2>
- <div class="card c"><div id="arrow" aria-hidden="true">↑</div><div id="instr" class="big"></div><div id="dist"></div><small id="nline"></small></div>
- <div class="grid"><button onclick="repeat()">Repeat</button><button onclick="where()">Where am I?</button>
- <button id="pz" class="alt" onclick="pause()">Pause guidance</button><button class="alt" onclick="help()">Help</button>
- <button class="alt" onclick="stopNav();show('home')">Change destination</button><button class="alt" onclick="stopNav();show('home')">Stop</button></div>
+ <div class="card c"><div id="arrow" aria-hidden="true">↑</div><div id="instr" class="big"></div><div id="dist"></div><small id="nline"></small><small id="pz">Pause guidance</small></div>
  <div id="helpbox" class="card" hidden><p>CrossSense cannot contact anyone for you. Ask a person nearby, or call your local emergency number yourself.</p><a class="btn" href="tel:112">Call 112</a></div></section>
 
 <section class="view" id="v-arrive"><h2>Destination area reached</h2>
- <div class="card"><p>You have reached your destination area. Would you like to stop navigation or choose another destination?</p>
- <button onclick="show('home')">Choose another destination</button><button class="alt" onclick="show('home')">Stop navigation</button></div></section>
+ <div class="card"><p>You have reached your destination area. Would you like to stop navigation or choose another destination?</p></div></section>
 
 <section class="view" id="v-arb"><h2>Arbitration engine</h2>
  <div class="card"><p>Only one cue plays at a time. Lower number wins:</p>
  <ol><li>Emergency or critical hazard</li><li>Obstacle proximity</li><li>Navigation instruction</li><li>Orientation correction</li><li>Routine confirmation</li></ol>
  <p>Stale sensor data is rejected, repeated cues are suppressed, and sensor faults raise a spoken alert. This order is a prototype policy and needs risk analysis and user testing.</p></div>
- <div class="card"><b id="arbLive">–</b><button onclick="arbDemo()">Demo: obstacle, then left turn</button><p id="arbOut" aria-live="polite"></p></div></section>
+ <div class="card"><b id="arbLive">–</b><p id="arbOut" aria-live="polite"></p></div></section>
 
 <section class="view" id="v-setup"><h2>Setup</h2>
  <div class="card"><b>Connection</b><p id="net">–</p><b>This phone</b><ul id="caps"></ul></div>
  <div class="card"><b>Route service key</b>
- <p>Free key from openrouteservice.org (sign up, then Request a token). It is saved only on this phone.</p>
- <input id="orskey" aria-label="OpenRouteService key" placeholder="Paste key"><button onclick="saveKey()">Save key</button></div>
+ <p>Free key from openrouteservice.org (sign up, then Request a token). Paste it once; it saves automatically and stays only on this phone.</p>
+ <input id="orskey" aria-label="OpenRouteService key" placeholder="Paste key" onchange="saveKey()"></div>
  <div class="card"><b>Safety</b><p>CrossSense is a navigation aid. It does not replace a cane, guide dog or mobility training. It never judges whether a road crossing is safe. Sensors cannot detect every obstacle.</p></div></section>
 </main>
+<button id="stopbar" hidden onclick="doStop()">STOP</button>
 <nav aria-label="Main">
- <button data-v="home" onclick="show('home')">Go</button><button data-v="check" onclick="show('check')">Devices</button>
- <button data-v="haptics" onclick="show('haptics')">Haptics</button><button data-v="arb" onclick="show('arb')">Arbiter</button>
- <button data-v="setup" onclick="show('setup')">Setup</button></nav>
+ <button data-v="home" onclick="tab('home')">Go</button><button data-v="check" onclick="tab('check')">Devices</button>
+ <button data-v="haptics" onclick="tab('haptics')">Haptics</button><button data-v="arb" onclick="tab('arb')">Arbiter</button>
+ <button data-v="setup" onclick="tab('setup')">Setup</button></nav>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="app.js"></script>
+<script src="voice.js"></script>
 </body></html>

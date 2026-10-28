@@ -20,3 +20,8 @@ nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0b1220;paddi
 nav button{margin:0;min-height:56px;font-size:16px;background:#1e293b}nav button[aria-current=true]{background:var(--teal)}
 :focus-visible{outline:3px solid var(--amb);outline-offset:2px}
 .sr{position:absolute;left:-9999px}
+[hidden]{display:none!important}
+#start{position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+#start p{font-size:26px;font-weight:700}
+#stopbar{position:fixed;left:8px;right:8px;bottom:84px;z-index:50;min-height:84px;background:var(--red);font-size:30px}
+.hint{color:var(--mut);font-size:17px;margin:0 0 8px}#heard{font-size:15px;color:var(--mut)}

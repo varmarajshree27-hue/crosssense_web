@@ -1,6 +1,6 @@
 const $=i=>document.getElementById(i);
 const S={dest:null,route:null,idx:1,cued:{},pos:null,wid:null,paused:false,navOn:false,hs:null,hsAt:0,linked:false,diagOk:false,said:{},orientAt:0,lastFix:0};
-const say=t=>{$('live').textContent=t;try{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t))}catch(e){}};
+const say=t=>window.speak?speak(t):Promise.resolve();
 function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id=='v-'+v));
  const g={route:'home',nav:'home',arrive:'home'}[v]||v;
  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.v==g));
@@ -31,7 +31,7 @@ function onState(v){const f=v.getUint8(10);
 const cmd=(op,a,b)=>new Promise((res,rej)=>{if(!S.linked)return rej(Error('no hub'));const q=++seq&255;wait[q]=res;
  chC.writeValueWithoutResponse(new Uint8Array([q,op,a,b])).catch(rej);
  setTimeout(()=>{if(wait[q]){delete wait[q];rej(Error('timeout'))}},3000)});
-const test=(s,p)=>cmd(1,s,p);
+const test=(s,p)=>{armStop();return cmd(1,s,p)};
 const EV=['left','right','orientl','orientr','obstacle','urgent'],ev=t=>cmd(2,EV.indexOf(t),0);
 const fresh=()=>S.linked&&Date.now()-S.hsAt<3000;
 
@@ -54,14 +54,10 @@ setInterval(poll,1000);poll();
 // ---------- destination + routing (OpenRouteService) ----------
 const ORS='https://api.openrouteservice.org',key=()=>localStorage.getItem('ors')||'';
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(!SR){$('mic').disabled=true;$('micnote').textContent='Voice input is not supported in this browser. Type the destination.'}
-else $('micnote').textContent='Voice input uses your browser speech service (needs internet).';
-$('mic').onclick=()=>{const r=new SR();say('Where would you like to go?');
- r.onresult=e=>{$('dest').value=e.results[0][0].transcript;say(`You said ${$('dest').value}. Is that correct? Press confirm, or say it again.`)};
- r.onerror=()=>say('I did not catch that. Please try again or type it.');setTimeout(()=>r.start(),1800)};
+
 const upd=p=>(S.pos={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy},S.lastFix=Date.now(),S.pos);
 const getPos=()=>new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(p=>ok(upd(p)),no,{enableHighAccuracy:true,timeout:15000}));
-$('conf').onclick=async()=>{const q=$('dest').value.trim(),h=$('hstat');if(!q){say('Please enter a destination.');return}
+async function confirmDest(){const q=$('dest').value.trim(),h=$('hstat');if(!q){say('Please enter a destination.');return}
  h.textContent='Finding route…';say('Finding a route to '+q);
  try{
   if(!key())throw 'Add your route service key in Setup first.';
@@ -74,8 +70,8 @@ $('conf').onclick=async()=>{const q=$('dest').value.trim(),h=$('hstat');if(!q){s
   const j=(await r.json()).features[0];
   S.route={geometry:j.geometry,coords:j.geometry.coordinates,summary:j.properties.summary,steps:j.properties.segments[0].steps};h.textContent='';
   $('rsum').textContent=`Destination: ${f.properties.label}. About ${Math.round(S.route.summary.distance)} metres, roughly ${Math.max(1,Math.round(S.route.summary.duration/60))} minutes.`;
-  show('route');say($('rsum').textContent+' Press start journey when ready.');drawMap(o,d)
- }catch(e){const m=typeof e=='string'?e:'Route lookup failed. Check internet access.';h.textContent=m;say(m)}};
+  show('route');say($('rsum').textContent+' Say start journey when ready, or say change destination.');drawMap(o,d)
+ }catch(e){const m=typeof e=='string'?e:'Route lookup failed. Check internet access.';h.textContent=m;say(m);S.dm='dest'}}
 function drawMap(o,d){if(!window.L){$('map').textContent='Map unavailable.';return}
  if(S.map)S.map.remove();S.map=L.map('map');
  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(S.map);
@@ -83,22 +79,21 @@ function drawMap(o,d){if(!window.L){$('map').textContent='Map unavailable.';retu
  L.circleMarker([o.lat,o.lon]).addTo(S.map);L.circleMarker([d.lat,d.lon],{color:'red'}).addTo(S.map)}
 
 // ---------- device check ----------
-const ask=q=>new Promise(res=>{say(q);$('ask').innerHTML=`<p>${q}</p><div class="row"><button id="y">Yes</button><button id="n" class="alt">No</button></div>`;
- $('y').onclick=()=>{$('ask').innerHTML='';res(true)};$('n').onclick=()=>{$('ask').innerHTML='';res(false)};$('y').focus()});
+const ask=q=>new Promise(res=>{S.askRes=res;say(q+' Say yes or no.');$('ask').innerHTML=`<p>${q}</p>`});
 async function runCheck(){const out=[];S.diagOk=false;$('goOn').hidden=true;$('diag').innerHTML='';
  const add=(n,s,t)=>{out.push([n,s,t]);$('diag').innerHTML=out.map(([n,s,t])=>`<li class="${s}"><b>${n}</b>: ${t}</li>`).join('')};
- if(!fresh()){add('Hub','bad','not connected. Press Connect to CrossSense hub on the Go tab.');say('Hub not connected.');return}
+ if(!fresh()){add('Hub','bad','not connected. Say connect hub.');say('Hub not connected.');return}
  add('Hub','ok','connected');let all=true;
  for(const [s,n] of [[0,'Left'],[1,'Right']]){
   if(!S.hs[n.toLowerCase()]){add(n+' bracelet','bad','not connected to the hub');all=false;continue}
   await test(s,3).catch(()=>{});
-  const y=await ask(`Testing the ${n.toLowerCase()} bracelet. Did you feel three clicks on your ${n.toLowerCase()} wrist?`);
+  const y=await ask(`Testing the ${n.toLowerCase()} bracelet. Did you feel three clicks on your ${n.toLowerCase()} wrist?`);if(y===null){add('Check','bad','stopped');say('Check stopped.');return}
   add(n+' bracelet',y?'ok':'bad',y?'connected, vibration confirmed by you':'command sent, vibration NOT confirmed');if(!y)all=false}
  const h=S.hs,bo=h.bno&&h.headingAgeMs<1000,to=h.tof&&h.distAgeMs<1000;
  add('Orientation sensor',!bo?'bad':h.magCal>=3?'ok':'warn',!bo?'unavailable':h.magCal>=3?'working, compass calibrated':`working, compass calibrating (${h.magCal}/3): wave the chest module in a figure eight`);
  add('Obstacle sensor',to?'ok':'bad',to?'working':'unavailable');
  all=all&&bo&&to;S.diagOk=all;$('goOn').hidden=!all;
- say(all?'All required checks passed.':'Some checks failed. Navigation is blocked until they pass.')}
+ say(all?'All required checks passed. Say continue for haptic practice'+(S.route?', or say start journey.':'.'):'Some checks failed. Navigation is blocked until they pass. Say start check to try again.')}
 
 // ---------- haptic language ----------
 const PAT=[
@@ -110,12 +105,9 @@ const PAT=[
  {n:'System ready',s:2,p:1,d:'Single click, both wrists',t:[8]},
  {n:'Communication failure',s:2,p:4,d:'Two soft bumps, both wrists',t:[14,-10,14]}];
 $('pats').innerHTML=PAT.map((c,i)=>`<div class="card"><b>${c.n}</b><div class="tl" aria-hidden="true">${c.t.map(w=>w>0?`<i style="width:${w}px"></i>`:`<b style="width:${-w}px"></b>`).join('')}</div>
- <small>${c.d}. Timeline is approximate.</small><button class="alt" onclick="tp(${i})">Test ${c.n}</button></div>`).join('');
+ <small>${c.d}. Timeline is approximate.</small><small>Say: test ${c.n.toLowerCase()}</small></div>`).join('');
 const tp=i=>test(PAT[i].s,PAT[i].p).then(r=>say(r.delivered?PAT[i].n:'No bracelet received it')).catch(()=>say('Hub not connected'));
-async function practice(){const i=Math.floor(Math.random()*5);
- try{await test(PAT[i].s,PAT[i].p)}catch(e){say('Hub not connected');return}
- say('Which cue was that?');
- $('prac').innerHTML=PAT.slice(0,5).map((c,j)=>`<button class="alt" onclick="say(${j==i}?'Correct, ${c.n}':'Not quite. It was ${PAT[i].n}')">${c.n}</button>`).join('')}
+async function practice(){const i=Math.floor(Math.random()*5);try{await test(PAT[i].s,PAT[i].p)}catch(e){say('Hub not connected');return}S.prac=i;say('Which cue was that? Say turn left, turn right, obstacle, urgent, or orientation. Say skip to give up.')}
 
 // ---------- navigation ----------
 const rad=x=>x*Math.PI/180;
@@ -141,7 +133,7 @@ function onPos(p){upd(p);if(!S.navOn)return;
   const e=((brg(S.pos,loc(m))-h.heading+540)%360)-180;
   if(Math.abs(e)>50){S.orientAt=Date.now();$('nline').textContent=e>0?'Turn right to face the route':'Turn left to face the route';ev(e>0?'orientr':'orientl').catch(()=>{})}
   else $('nline').textContent=''}}
-function stopNav(){S.navOn=false;if(S.wid!=null)navigator.geolocation.clearWatch(S.wid);S.wid=null;say('Navigation stopped.')}
+function stopNav(){stopMotors();S.navOn=false;if(S.wid!=null)navigator.geolocation.clearWatch(S.wid);S.wid=null;say('Navigation stopped.')}
 function arrive(){stopNav();show('arrive');say('You have reached your destination area. Would you like to stop navigation or choose another destination?')}
 const repeat=()=>say(`${$('instr').textContent}. ${$('dist').textContent}.`);
 function pause(){S.paused=!S.paused;$('pz').textContent=S.paused?'Resume guidance':'Pause guidance';say(S.paused?'Guidance paused. Obstacle warnings stay on.':'Guidance resumed.')}
@@ -152,7 +144,7 @@ async function where(){if(!S.pos){say('Location not available.');return}
  catch(e){say(`I could not look up your address. Location accuracy about ${Math.round(S.pos.acc)} metres.`)}}
 
 // ---------- arbitration demo + setup ----------
-async function arbDemo(){try{const o=await ev('obstacle'),l=await ev('left');
+async function arbDemo(){armStop();try{const o=await ev('obstacle'),l=await ev('left');
  $('arbOut').textContent=`Obstacle cue: ${o.suppressed?'suppressed':'sent to '+o.delivered+' bracelet(s)'}. Left-turn cue: ${l.suppressed?'suppressed by the higher-priority obstacle cue':'sent'}. It can be sent again after about 1.5 seconds.`;say($('arbOut').textContent)}
  catch(e){say('Hub not connected')}}
 function setup(){$('net').textContent=fresh()?'Hub connected over Bluetooth':'Hub not connected';$('orskey').value=key()?'••••saved':'';
